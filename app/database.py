@@ -311,6 +311,9 @@ PERMISSIONS = [
     ("announcements.write", "维护公告", "announcements", "write"),
     ("audit.read", "查看审计", "audit", "read"),
     ("jobs.run", "执行后台任务", "jobs", "run"),
+    ("water.read", "查看再生水台账", "water", "read"),
+    ("water.write", "登记补录再生水读数", "water", "write"),
+    ("water.review", "复核回滚再生水数据", "water", "review"),
 ]
 
 
@@ -385,6 +388,28 @@ def init_db() -> None:
             "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at) SELECT ?,id,? FROM permissions",
             (administrator, now),
         )
+        connection.execute(
+            "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at)"
+            " VALUES('water-operator','再生水运维员','登记设施班次读数并补录修订版本',1,?,?)",
+            (now, now),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at)"
+            " VALUES('water-reviewer','再生水复核员','复核异常读数、回滚版本并关账批次',1,?,?)",
+            (now, now),
+        )
+        for role_code, permission_codes in (
+            ("auditor", ("water.read",)),
+            ("water-operator", ("water.read", "water.write")),
+            ("water-reviewer", ("water.read", "water.write", "water.review")),
+        ):
+            role_id = connection.execute("SELECT id FROM roles WHERE code=?", (role_code,)).fetchone()[0]
+            for permission_code in permission_codes:
+                connection.execute(
+                    "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at)"
+                    " SELECT ?,id,? FROM permissions WHERE code=?",
+                    (role_id, now, permission_code),
+                )
 
 
 def migrate_db() -> None:
