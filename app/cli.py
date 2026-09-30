@@ -7,16 +7,24 @@ from fastapi.testclient import TestClient
 
 from app.database import database_path, get_connection, init_db
 from app.main import app
+from app.seismic.service import ensure_schema as ensure_seismic_schema
+from app.water.store import ensure_schema as ensure_water_schema
+
+
+def ensure_all_schemas() -> None:
+    init_db()
+    ensure_seismic_schema()
+    ensure_water_schema()
 
 
 def command_init() -> int:
-    init_db()
+    ensure_all_schemas()
     print(json.dumps({"database": str(database_path()), "status": "initialized"}, ensure_ascii=False))
     return 0
 
 
 def command_check() -> int:
-    init_db()
+    ensure_all_schemas()
     connection = get_connection()
     result = {
         "database": str(database_path()),
